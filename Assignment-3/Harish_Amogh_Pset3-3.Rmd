@@ -1,0 +1,420 @@
+---
+title: "EDAV Fall 2019 PSet 3"
+author: "Harish Visweswaran (hv2197) and Amogh Mishra (am5323)"
+output:
+  html_document:
+    df_print: paged
+editor_options:
+  chunk_output_type: console
+---
+
+Read *Graphical Data Analysis with R*, Ch. 6, 7
+
+Grading is based both on your graphs and verbal explanations. Follow all best practices as discussed in class.
+
+Data cleaning: for many of the questions, you will have to clean up the data more than in past assignments. Labels do not have to perfect but they have to be legible. Often it is helpful to shorten or abbreviate labels: this can be done before plotting or at times within the plot functions. You may make any changes to the data as appropriate before plotting, including renaming column names and the like. Be sure though to include all adjustments in your scripts.
+
+```{r setup, include=FALSE}
+ # keep this chunk in your .Rmd file
+ knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+# Code for instalation of all necessary packages
+# install.packages('vcd', repos = "http://cran.us.r-project.org")
+# install.packages('tidyverse', repos = "http://cran.us.r-project.org")
+# install.packages("GGally", repos = "http://cran.us.r-project.org")
+# install.packages("rvest", repos = "http://cran.us.r-project.org")
+# install.packages('parcoords')
+# install.packages('d3r')
+# install.packages('readxl')
+```
+
+```{r packages}
+# Loading all necessary packages
+library(ucidata)
+library(tidyverse)
+library(vcd)
+library(GGally)
+library(rvest)
+library(parcoords)
+library(d3r)
+library(readxl)
+```
+
+    
+### 1. Coal Emissions
+
+Data: https://datadiscovery.nlm.nih.gov/Environmental-Health/TOXMAP-EPA-Clean-Air-Markets-2016-Coal-Emissions/n97u-wtk7
+
+(OK to manually download `.csv` file)
+
+(a) Using `parcoords::parcoords()`, create an interactive parallel coordinate plot of `SO2`, `NOx`, `CO2`, `Heat Input` and `Gross Load`. Each line in the plot should represent one coal plant. Note any patterns.
+```{r 1a, fig.align='center', fig.height=5, fig.width=10}
+df <- read.csv("/Users/harish/Downloads/TOXMAP_-_EPA_Clean_Air_Markets_-_2016_Coal_Emissions.csv")
+par_df <-  df[,c(12,11,9,7,5)]
+
+# Removing plants that have any missing emission values for the parallel coordinate plot in order to get the complete picture of the plants
+
+par_df <- par_df %>%
+        filter(!is.na(SO2) & !is.na(NOx) & !is.na(CO2) & !is.na(Heat.Input) & !is.na(Gross.Load) )
+
+parcoords(par_df, reorderable = T, rownames = F, queue= T, alpha = 0.3, brushMode = "1D-axes")
+```
+
+We have removed the plants that have any missing emission values for the parallel coordinate plot in order to get the complete picture of the plants
+
+* From the graph, we can see that there is a positive relationship between Gross Load and Heat Input - this can be seen because the lines are mostly parallel with very little cross over. There is a similar relationship with CO2 as well. 
+* However, plants that emit high levels of CO2 seem to emit lower levels of NOx. We can see the twists in the lines indicating a negative relationship between CO2 and NOx
+* Continuing, we can see similar twists in lines going from NOx to SO2, again indicating a negative relationship but not as evident as the twists we can see from CO2 to NOx
+* We can also notice that most plants have low values of emission - we can see the concentration at the bottom of the plot
+* However, we also see quite a few plants that have relatively high values of NOx while we don't see too many plants with relatively very high values SO2
+* The values of CO2 seems to be directly related to the Gross Load and Heat Input
+
+
+(b) Create a second interactive parallel coordiante plot, with the lines colored by state. Include only the states with more than 15 plants. Do any new patterns emerge? Explain briefly.
+
+```{r 1b, fig.align='center', fig.height=5, fig.width=10}
+par_df_with_state <- df %>% mutate(State=factor(sapply(strsplit(as.character(Location),"\n"), `[`, 1))) %>% group_by(State) %>% filter(n() > 15) %>% ungroup() 
+
+par_df_with_state <- as.data.frame(par_df_with_state)
+par_df_with_state <- par_df_with_state[,c(12,11,9,7,5,14)]
+
+# Removing plants that have any missing emission values for the parallel coordinate plot in order to get the complete picture of the plants
+
+par_df_with_state <- par_df_with_state %>%
+  filter(!is.na(SO2) & !is.na(NOx) & !is.na(CO2) & !is.na(Heat.Input) & !is.na(Gross.Load) )
+
+parcoords(par_df_with_state, rownames = F, reorderable = T, queue= T, alpha = 0.5, brushMode = "1D-axes", color = list( colorBy = "State" ,colorScale = "scaleOrdinal" ,colorScheme = "schemeCategory10"), withD3 =TRUE )
+```
+
+We have removed the plants that have any missing emission values for the parallel coordinate plot in order to get the complete picture of the plants
+
+* In the interactive plot, we can highlight one state at a time to observe patterns by state. When we select Indiana or Pennysylvania, we can see that some plants in those states have the highest values for NOx. 
+* Texas and Indiana have some of the plants with the highest gross load while Michigan and Pennysylvania have plants with low gross loads
+* Plants in Michigan (except for the one outlier plant) have lower emission values compared to plants in other states.
+* Compared to other states, some plants in Texas have high values of SO2
+* The twisting lines between CO2 and NOx is not as apparent in this plot when we choose one state at a time and go through all the states. However, when we select Ohio, we still see the twists in lines from CO2 to NO2
+* Generally speaking, the plants with higher gross load have higher heat input and emissions although the type of emission can vary
+
+(c) What do `SO2`, `NOx` and `CO2` stand for? Briefly describe why each is harmful.
+
+* Nitrogen oxides (NOx) and sulfur dioxide (SO2) are pollutants that are harmful to humans. Breathing either sulfur dioxide (SO2) or nitrogen oxides (NOx) for short periods (24 hrs or less) can cause adverse respiratory effects such as airway inflammation, bronchoconstriction, asthma symptoms and result in emergency visits or hospital admissions, especially for those with asthma or respiratory illnesses
+
+* On breathing, NOx goes into the lungs and then reacts with water in lungs to cause severe damage to tissues. Chronic low-concentration exposure may lead to chronic bronchitis or emphysema. High-intensity, confined space exposure to NO2 (Nitrogen dioxide) has caused catastrophic injury to humans, including death. 
+
+* Sulfur dioxide (SO2) contributes to respiratory symptoms in both healthy patients and those with underlying pulmonary disease. At high concentrations, it can cause life-threatening accumulation of fluids in lungs.
+
+* Carbon dioxide (C02) while not harmful at lower concentrations can cause headaches, dizziness, restlessness, difficulty breathing, sweating, tiredness, increased heart rate, elevated blood pressure, coma, asphyxia, and convulsions at higher concentrations. It displaces the oxygen and a lack of oxygen can cause permanent damage to our organs like the heart and the brain.
+
+
+### 2. Planets
+
+Using **rvest**, scrape the data from this table: https://nssdc.gsfc.nasa.gov/planetary/factsheet/ (hint: `html_table` is helpful). Remove `MOON` data. Then, using `GGally::ggparcoord()`, create two parallel coordinate plots of the numerical variables in the dataset, one colored by the value of `Ring System?` and one colored by planet name. In both cases, each line should represent one planet. Use `coord_flip` so the variable names are easier to read.  Describe any patterns you find.
+
+```{r Q2, fig.align='center', fig.height=7, fig.width=7}
+planetary_link <-  'https://nssdc.gsfc.nasa.gov/planetary/factsheet/'
+
+planetary <- read_html(planetary_link) %>% 
+  html_nodes("table") %>% 
+  .[[1]] %>% 
+  html_table(header = TRUE)
+
+planetary <- planetary %>% 
+  rename(variable = "") %>% 
+  slice(-21) %>% 
+  select(-MOON)
+
+
+# Updating the variable names to remove units and the question mark
+planetary$variable <- str_replace_all(planetary$variable, " \\(.*|\\?", "")
+
+# Storing a vector of the variable to maintain order
+var_order <- planetary$variable
+
+planetary <- planetary %>% 
+  gather(key="planet", value="value", -variable) %>% 
+  spread(key="variable", value="value")
+
+planetary <- type_convert(planetary)
+
+# Reselecting columns and dropping surface pressure as it has a lot of unknown values
+planetary <- planetary %>% 
+  select(c("planet",var_order)) %>% 
+  select(-`Surface Pressure`)
+
+planetary <- planetary %>%
+  rename(RingSystem = `Ring System`)
+
+# Colored by ring system
+
+planetary %>% 
+  select(-`Global Magnetic Field`, -planet) %>% 
+  ggparcoord(columns = c(4,1,5,16,8,9,10,11,17,2, 3,6,12, 7,13,14,15),
+             scale="uniminmax", 
+             alphaLines = 1,
+             groupColumn = "RingSystem",
+             showPoints = FALSE,
+             splineFactor = FALSE) +
+  coord_flip() +
+  labs(y = "Scaled Value",
+       x = "Variable",
+       title = "Planet Metrics Parallel Coordinate Plot")
+
+# Colored by planet
+
+planetary %>% 
+  select(-`Global Magnetic Field`, -RingSystem) %>% 
+  ggparcoord(columns = c(5,2,6,17, 9,10,11,12,18,3, 4,7,13, 8,14,15,16),
+             scale="uniminmax", 
+             alphaLines = 1,
+             groupColumn = "planet",
+             showPoints = FALSE,
+             splineFactor = FALSE) +
+  coord_flip() +
+  labs(y = "Scaled Value",
+       x = "Variable",
+       title = "Planet Metrics Parallel Coordinate Plot")
+
+```
+
+**Observations:**
+
+* Planets without ring systems (except Pluto) have relatively low values when it comes metrics like Mass, Diameter, Escape Velocity, Distance from Sun, Perhilion, Aphelion, Orbital Period, Number of Moons when compared to planets with ring systems.
+* Planets without ring systems have higher density than planets with ring systems
+* Although Pluto does not have a ring system, it seems to be behaving more like the planets that have ring systems across nultiple metrics including Aphelion, Perihelion and Orbital Period
+
+* In general, Planets closest to the sun have a low number of moons compared to planets further away from the sun
+* We can see that planets that are closest to the sun have low perihilion and aphelion values as they refer to the closest and the farthest point in the planet's orbit around the sun. 
+* The planets closer to the sun also seem to have higher density than planets that are away from the sun.
+* Mercury seems to have very high values for rotation period, orbital velocity and length of day
+* Interestingly, Mercury, which is closest to the sun and pluto which is farthest from the sun seem to be the planets that have extreme values for quite a few of the metrics
+* As expected, mean temperature decreases as the distance from the sun increases (can be seen by the twists in the lines)
+* Despite Mercury being the closer to the sun, Venus has the highest mean temperature
+* We can see that planets with a higher diameter generally have a lower density from the crossing lines from diameter to density - this can also be seen by observing that ringed planets have lower density that planets without ring systems
+
+
+
+### 3. Heart Disease
+
+Data: four data frames that begin with `heart_disease` in the **ucidata** package
+
+Packages: You may use **vcd** or **ggmosaic**.
+
+(a) Create three mosaic plots, each involving two categorical variables from `heart_disease_cl` and interpret the plots. (You may reuse variables, for example X ~ Y and X ~ Z).
+
+```{r Q3a:1, fig.align='center'}
+
+# Mosaic Plot of Exercise Induced Angina by Sex
+mosaic(exang ~ sex, 
+       direction = c("v", "h"),
+       labeling = labeling_border(rot_labels = c(0, 0, 0, 0)),
+       gp = gpar(fill = c("#D1E5F0", "#2166AC")),
+       main = "Mosaic Plot of Exercise Induced Angina by Sex",
+       main_gp = gpar(fontsize = 14),
+       heart_disease_cl)
+```
+  
+  
+* We can observe from the plot that there are more males in the dataset compared to females
+* Overall, a higher proportion of people from the dataset do not suffer from exercide induced angina
+* We can also notice that a higher proportion of males experience exercise induced angina when compared to females - however, the difference is not very large
+  
+  
+```{r Q3a:2, fig.align='center'}
+# Mosaic Plot of Chest Pain Type by Exercise Induced Angina
+
+mosaic(cp ~ exang, 
+       direction = c("v", "h"),
+       labeling = labeling_border(rot_labels = c(0, 0, 0, 65),
+                                  set_labels = list(cp = c("typ-ang", "atyp-ang", "non-ang", "asympto"))),
+       gp = gpar(fill = c("#D1E5F0", "#92C5DE", "#4393C3", "#2166AC")),
+       main = "Mosaic Plot of Chest Pain Type by Exercise Induced Angina",
+       main_gp = gpar(fontsize = 14),
+       heart_disease_cl)
+```
+  
+  
+* There are a few things we can observe from the plot
+* A higher proportion of patients in the dataset do not suffer from exercise induced angina
+* However, a majority of the people who suffer from exercise induced angina suffer from aysmptomatic chest pain. The proportion of people suffering from asymptomatic chest pain is lower in people who do not suffer from exercise induced angina
+* Among people who do not suffer from exercise induced angina, non anginal chest pain seems to be affecting a higher proprtion of the people (in comparison to other types of chest pain)
+* Typical Angina seems to be the least common type of chest pain overall
+  
+  
+```{r Q3a:3, fig.align='center'}
+# Mosaic Plot of Thallium Test Results by Sex
+
+mosaic(thal ~ sex, 
+       direction = c("v", "h"),
+       labeling = labeling_border(rot_labels = c(0, 0, 0, 65),
+                                  set_labels = list(thal = c("normal", "fix-def", "rev-def"),
+                                                    sex = c("F", "M"))),
+       gp = gpar(fill = c("#D1E5F0", "#92C5DE", "#2166AC")),
+       main = "Mosaic Plot of Thallium Test Results by Sex",
+       main_gp = gpar(fontsize = 14),
+       heart_disease_cl)
+```
+  
+  
+* We can observe from the plot that there are more males in the dataset compared to females
+* From the plot, we can say that a large proportion of females have normal test results on the thallium stress test while for males, less than half of them have a normal test result
+* Approximately half of the males are daignosed with a reversible defect on the thallium stress test while that proportion is much smaller for females
+* Overall, a fixed defect is the least common diagnosis (when compared with normal and reversible defects) for people in the dataset
+  
+  
+  
+(b) Combine the four heart disease datasets and create a mosaic plot showing chest pain by sex and location. Describe any patterns.
+
+```{r Q3b, fig.align='center'}
+heart_disease_cl <- heart_disease_cl %>% 
+  mutate(location = "Cleveland")
+
+heart_disease_ch <- heart_disease_ch %>% 
+  mutate(location = "Switzerland")
+
+heart_disease_hu <- heart_disease_hu %>% 
+  mutate(location = "Hungary")
+
+heart_disease_va <- heart_disease_va %>% 
+  mutate(location = "Virginia")
+
+heart_disease_all <- bind_rows(heart_disease_cl, heart_disease_ch, heart_disease_hu, heart_disease_va)
+
+mosaic(cp ~ location + sex, 
+       direction = c("v", "v", "h"),
+       labeling = labeling_border(rot_labels = c(0, 0, 0, 60),
+                                  set_labels = list(cp = c("typ-ang", "atyp-ang", "non-ang", "asympto"),
+                                                    sex = c("F", "M")),
+                                  gp_labels = gpar(fontsize = 10)),
+       gp = gpar(fill = c("#D1E5F0", "#92C5DE", "#4393C3", "#2166AC")),
+       main = "Mosaic Plot of Chest Pain by Sex and Location",
+       main_gp = gpar(fontsize = 14),
+       heart_disease_all)
+```
+  
+  
+* There are many observations we can make from the mosaic plot:
+* Firstly, we can see that the most data contribution comes from Cleveland, follow by Hungary, Virginia and Switzerland
+* Overall, we can observe that the number of males in the dataset is much higher than the number of females
+* The data from Virginia has the least proportion of females in the dataset (compared to other locations)
+* Overall, it seems that asymptomatic chest pain is the most common form of chest pain and typical angina is the least form of chest pain (based on the data in the dataset)
+* The data from Switzerland has the highest proportion of people who get asymptomatic chest pain(similar proportions for males and females)
+* In Hungary, it seems clear that there is a higher proportion of females who suffer from atpyical angina and a lower proportion of females who suffer from asymptomatic chest pain (compared to males)
+
+
+
+### 4. District 3 Elementary Schools
+
+Recently, there has been much debate about the lack of racial and economic diversity at Manhattan District 3 elementary schools, part of a larger and long-standing controversy about iniquities in the New York City public school system as a whole.
+
+The *New York Times* article, "Rezoning Plan to Remake 3 Upper West Side Schools Will Proceed, City Says,"  (https://www.nytimes.com/2016/11/10/nyregion/rezoning-plan-for-3-upper-west-side-schools-will-proceed-city-says.html) (2016-11-10) identifies the 11 elementary schools in Manhattan District 3.
+
+For this question, we will analyze parent survey results for these schools.
+
+Data: https://www.schools.nyc.gov/about-us/reports/school-quality/nyc-school-survey
+
+
+(a) Choose one of the likert style questions from the 2019 parent survey and use a diverging stacked bar chart to show results for the 11 schools identified in the article referenced above.
+
+```{r 4a, fig.align='center'}
+df_2019 = as.data.frame(read_excel("/Users/harish/Downloads/2019-public-data-file_parent.xlsx",sheet = 2))
+
+df_questions <-colnames(df_2019)[4]
+df_2019_new2 <- df_2019 %>% 
+                dplyr::select(DBN:`School Name`)
+
+df_2019_new3 <- df_2019 %>% 
+  dplyr::select(`1a. School staff regularly communicate with me about how I can help my child learn.`:...7)
+
+df_2019_new2<-df_2019_new2 %>% slice(3:n())                                       
+
+df_2019_new3 <- df_2019_new3 %>% slice(3:n()) %>% rename("Strongly Disagree"=`1a. School staff regularly communicate with me about how I can help my child learn.`,"Disagree"=...5,"Agree"=...6,"Strongly Agree"=...7)
+
+df_2019_new4 <- bind_cols(df_2019_new2, df_2019_new3)
+
+df_2019_new4 <- df_2019_new4 %>% filter(DBN %in% c('03M165','03M145','03M163','03M075','03M084','03M166','03M009','03M087','03M452','03M199','03M191')) %>% rename(School=`School Name`)
+
+df_2019_new5 <- df_2019_new4[,-1] %>% mutate(School=substr(School,1,8))
+df_2019_new5$School<-if_else(df_2019_new5$School=="THE RIVE","P.S. 191",df_2019_new5$School)
+i <- c(2, 3,4,5) 
+
+df_2019_new5[ , i] <- apply(df_2019_new5[ , i], 2,function(x) as.numeric(as.character(x)))
+
+HH::likert(School ~ .,data = df_2019_new5,positive.order=TRUE, main=list("2019 Parent Survey Response Breakup for:\nSchool Staff regularly Communicate about how I can help my child", cex=1.1), xlab="Percent")
+```
+
+(b) Choose a question that was asked in 2014 and 2019 and compare results for the three schools discussed most in the article: P.S. 199, P.S. 191, and P.S. 452. You may use two separate diverging stacked bar charts or combine all the information in one.
+
+```{r 4b, fig.align='center'}
+df_2014 = as.data.frame(read_excel("/Users/harish/Downloads/2014_20School_20Survey.xlsx",sheet = 2))
+
+df_2014_2 <- df_2014 %>% dplyr::select(DBN:`School Name`)
+
+df_2014_3 <- df_2014 %>% 
+  dplyr::select(`2a. At my child's school my child is safe.`:...68)
+
+df_2014_2 <- df_2014_2 %>% slice(3:n())                                       
+
+df_2014_3 <- df_2014_3 %>% slice(3:n()) %>% rename("Strongly Agree"=`2a. At my child's school my child is safe.`,"Agree"=...65,"Disagree"=...66,"Strongly Disagree"=...67,"Dont know"=...68)
+
+df_2014_4 <- bind_cols(df_2014_2, df_2014_3)
+
+df_2014_4 <- df_2014_4 %>% filter(DBN %in% c('03M452','03M199','03M191')) %>% rename(School=`School Name`)
+
+df_2014_4 <- df_2014_4[,c(1,2,6,5,4,3,7)]
+
+df_2014_5 <- df_2014_4[,-1] %>% mutate(School=substr(School,1,8))
+
+i <- c(2, 3,4,5,6) 
+df_2014_5[ , i] <- apply(df_2014_5[ , i], 2, function(x) as.numeric(as.character(x)))
+
+df_2019 = as.data.frame(read_excel("/Users/harish/Downloads/2019-public-data-file_parent.xlsx",sheet = 2))
+
+df_2019_2<- df_2019 %>% dplyr::select(DBN:`School Name`)
+
+df_2019_3<- df_2019 %>% 
+  dplyr::select(`2f. At this school my child is safe.`:...81)
+
+df_2019_2<-df_2019_2 %>% slice(3:n())                                       
+
+df_2019_3<-df_2019_3 %>% slice(3:n()) %>% rename("Strongly Disagree"=`2f. At this school my child is safe.`,"Disagree"=...78,"Agree"=...79,"Strongly Agree"=...80,"Dont know"=...81)
+
+df_2019_4<-bind_cols(df_2019_2, df_2019_3)
+
+df_2019_4<- df_2019_4 %>% filter(DBN %in% c('03M452','03M199','03M191')) %>% rename(School=`School Name`)
+
+df_2019_5<-df_2019_4[,-1] %>% mutate(School=substr(School,1,8))
+df_2019_5$School<-if_else(df_2019_5$School=="THE RIVE","P.S. 191",df_2019_5$School)
+
+i <- c(2, 3,4,5,6) 
+df_2019_5[ , i] <- apply(df_2019_5[ , i], 2, function(x) as.numeric(as.character(x)))
+
+df_2019_5$year<-"2019"
+df_2014_5$year<-"2014"
+combined_df<-rbind(df_2019_5,df_2014_5)
+
+combined_df <- combined_df[c(1,2,3,6,4,5,7)] %>% 
+  rename(`Don't Know` = `Dont know`)
+
+# NAs here are treated as 0s by the plot
+
+HH::likert(School ~ .|year, 
+           combined_df, 
+           layout = c(1,2),
+           positive.order = TRUE,
+           ReferenceZero=3,
+           main=list("Parent Survey Response Breakup for:\nAt this school my child is safe",cex=1.1),
+           xlab = "Percentage"
+)
+```
+
+(c) Interpret your findings of (b) in light of the reputations of the schools as presented in the article. Are they surprising or what you would have expected?
+
+* The article stated that P.S. 199 and P.S. 452 served mostly white and well off students. P.S. 191, on the other hand was in a zone that included a housing project and was avoided by white families - it had majorly poor and mostly black and Hispanic population, according to the article.
+
+* The article spoke about a plan where P.S. 191 was to move to a new building and P.S. 452 was to move to P.S. 191's building. Some members from P.S. 199 would be moved to P.S. 191 and P.S. 452 would serve some of the zones of the other two. Overall, the effect would be to put many more white, well-off students in the P.S. 191 zone, while putting more poor, minority students into the zones for P.S. 199 and P.S. 452.
+
+* In light of the explanations in the article, it is not surprising that the survey indicates lower confidence in safety among parents for school P.S. 452. P.S 452 was moved to the zone containing the housing project and that has come with some additional safety concerns in 2019 when compared to 2014. There were no negative ratings about safety in 2014 while there are some parents with a negative view on safety for P.S. 452 in 2019 and the proportion of parents who strongly agree that the school is safe has seen a drop too.
+
+* P.S. 191, which moved to a new building has a relatively higher proportion of parents who strongly agree that the school is safe in 2019 than in 2014. This is also aided by the fact that more white, well-off students have been put in the P.S. 191 zone. Generally though,the other two schools have higher proportion of parents who strongly agree that their school is safe for their children.
+
+* The responses for P.S. 199 have been relatively similar in breakup from 2014 to 2019 with only a slight uptick in negative responses.
+
